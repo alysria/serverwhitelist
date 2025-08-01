@@ -88,17 +88,27 @@
             slides = items.map(el => {
               const title = el.querySelector('title')?.textContent || '';
               const link = el.querySelector('link[rel="alternate"]')?.getAttribute('href') || '';
-              const thumbMatch = el.innerHTML.match(/https:\/\/preview\.redd\.it\/[^\s"]+/);
-              const thumb = thumbMatch ? thumbMatch[0].split('"')[0] : '';
+              let thumb = el.querySelector('media\\:thumbnail')?.getAttribute('url');
+              if (!thumb) {
+                const thumbMatch = el.innerHTML.match(/https:\/\/[^\s"]+\.(jpg|png|gif)/i);
+                thumb = thumbMatch ? thumbMatch[0] : '';
+              }
               return { title, thumb, link };
             }).filter(s => s.thumb && s.link);
             renderSlides();
           })
-          .catch(err => console.error('Oops, gallery fetch failed:', err));
+          .catch(err => {
+            console.error('Oops, gallery fetch failed:', err);
+            slidesContainer.innerHTML = '<p>Sorry, no images yet—try again later!</p>';
+          });
       }
 
       function renderSlides() {
         slidesContainer.innerHTML = '';
+        if (slides.length === 0) {
+          slidesContainer.innerHTML = '<p>No images found—check back soon!</p>';
+          return;
+        }
         slides.forEach((s, i) => {
           const slide = document.createElement('div');
           slide.className = 'slide';
