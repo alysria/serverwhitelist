@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Made Me Smile Gallery</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin: 1rem;
+      color: #ff4500; /* Reddit orange! */
+    }
+    .carousel {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      overflow: hidden;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .slides {
+      display: flex;
+      transition: transform 0.5s ease;
+    }
+    .slide {
+      min-width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      padding: 10px;
+    }
+    .slide img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .slide div {
+      padding: 5px;
+      font-size: 14px;
+      color: #333;
+    }
+    .prev, .next {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    .prev { left: 5px; }
+    .next { right: 5px; }
+    .prev:hover, .next:hover { background: rgba(0,0,0,0.8); }
+  </style>
+</head>
+<body>
+  <h1>/r/MadeMeSmile Gallery</h1>
+  <div class="carousel">
+    <div class="slides" id="slides"></div>
+    <button class="prev" id="prev">◀</button>
+    <button class="next" id="next">▶</button>
+  </div>
+
+  <script>
+    (function() {
+      const RSS = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.reddit.com/r/MadeMeSmile/.rss');
+      const limit = 10;
+      const slidesContainer = document.getElementById('slides');
+      let currentIdx = 0;
+      let slides = [];
+
+      function fetchAndRender() {
+        fetch(RSS)
+          .then(r => r.json())
+          .then(data => {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(data.contents, 'text/xml');
+            const items = Array.from(xmlDoc.querySelectorAll('entry, item')).slice(0, limit);
+            slides = items.map(el => {
+              const title = el.querySelector('title')?.textContent || '';
+              const link = el.querySelector('link[rel="alternate"]')?.getAttribute('href') || '';
+              const thumbMatch = el.innerHTML.match(/https:\/\/preview\.redd\.it\/[^\s"]+/);
+              const thumb = thumbMatch ? thumbMatch[0].split('"')[0] : '';
+              return { title, thumb, link };
+            }).filter(s => s.thumb && s.link);
+            renderSlides();
+          })
+          .catch(err => console.error('Oops, gallery fetch failed:', err));
+      }
+
+      function renderSlides() {
+        slidesContainer.innerHTML = '';
+        slides.forEach((s, i) => {
+          const slide = document.createElement('div');
+          slide.className = 'slide';
+          const img = document.createElement('img');
+          img.src = s.thumb;
+          img.alt = s.title;
+          img.onclick = () => window.open(s.link, '_blank');
+          const caption = document.createElement('div');
+          caption.textContent = s.title;
+          slide.appendChild(img);
+          slide.appendChild(caption);
+          slidesContainer.appendChild(slide);
+        });
+        currentIdx = 0;
+        updateView();
+      }
+
+      function updateView() {
+        slidesContainer.style.transform = `translateX(-${currentIdx * 100}%)`;
+      }
+
+      document.getElementById('prev').addEventListener('click', () => {
+        if (currentIdx > 0) {
+          currentIdx--;
+          updateView();
+        }
+      });
+
+      document.getElementById('next').addEventListener('click', () => {
+        if (currentIdx < slides.length - 1) {
+          currentIdx++;
+          updateView();
+        }
+      });
+
+      fetchAndRender();
+      setInterval(fetchAndRender, 3600000); // Refresh every hour
+      window.addEventListener('resize', updateView);
+    })();
+  </script>
+</body>
+</html>
